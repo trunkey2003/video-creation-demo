@@ -12,7 +12,7 @@ const configuration = new Configuration({
 const openai = new OpenAIApi(configuration);
 const download = require("image-downloader");
 
-var currentPath = process.cwd() + "\\files\\";
+var currentPath = process.cwd() + "/files/";
 
 const getMP3Duration = (buffer) => {
   return new Promise((resolve, reject) => {
