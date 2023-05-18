@@ -13,7 +13,8 @@ const swaggerDocumentation = require("./app/helpers/documentation");
 const apiRouter = require("./app/routes/api.routes");
 
 const app = express();
-app.use(cors());
+app.use(cors({ credentials: true, origin: ["http://localhost:3000"] }));
+
 app.use(cookieParser());
 
 app.use(logger("dev"));
