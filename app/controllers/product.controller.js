@@ -26,100 +26,82 @@ const getMP3Duration = (buffer) => {
 class productController {
   async index(req, res, next) {
     try {
-      if (!req.body.voice)
-        return res.status(400).send("No voice file uploaded.");
-      const keywords = Array.isArray(JSON.parse(req.body.keywords))
-        ? JSON.parse(req.body.keywords)
-        : [];
-      const audioContentBinary = Buffer.from(req.body.voice, "base64");
-      const images = [];
-      const {
-        fd,
-        path: voicePath,
-        cleanup: cleanupVoice,
-      } = await tmp.file({ postfix: ".mp3" });
-
-      try {
-        fs.writeFile(voicePath, audioContentBinary, async (err) => {
-          if (err) {
-            console.error(err);
-            cleanupVoice();
-            return;
-          }
-
-          const videoPath = currentPath + "video.mp4";
-
-          const duration = await getAudioDurationInSeconds(voicePath);
-
-          if (keywords.length > 0) {
-            for (let i = 0; i < keywords.length; i++) {
-              const prompt =
-                "A realistic image based on this keyword " + keywords[i];
-
-              console.log("image prompt: " + prompt);
-
-              try {
-                const response = await openai.createImage({
-                  prompt,
-                  n: 1,
-                  size: "512x512",
-                });
-                const imageUrl = response.data.data[0].url;
-                const options = {
-                  url: imageUrl,
-                  dest: currentPath + `image-${i}.jpg`,
-                };
-  
-                let { filename } = await download.image(options);
-                if (filename) {
-                  images.push(filename);
-                }
-              } catch (err) {
-                console.log("Request failed for image generation, prompt: " + prompt);
-                throw err;
-              }
-            }
-          } else {
-            images.push(currentPath + "rsi-logo.jpg");
-          }
-
-          const loop = Math.ceil(duration / images.length);
-
-          const videoOptions = {
-            fps: 25,
-            loop: loop,
-            transition: true,
-            transitionDuration: 1,
-            videoBitrate: 1024,
-            videoCodec: "libx264",
-            size: "512x512",
-            audioBitrate: "128k",
-            audioChannels: 2,
-            format: "mp4",
-            pixelFormat: "yuv420p",
+      if (!req.body.text && !req.body.textData) return res.sendStatus(400);
+      const text = String(req.body.text) || "";
+      let textData = req.body.textData;
+      if (!textData || !Array.isArray(textData)) {
+        textData = text.split(".").map((element, index) => {
+          return {
+            content: element,
+            type: index === 0 ? "title" : "content",
           };
-
-          videoshow(images, videoOptions)
-            .audio(voicePath)
-            .save(videoPath)
-            .on("start", function (command) {
-              console.log("ffmpeg process started:", command);
-            })
-            .on("error", function (err, stdout, stderr) {
-              console.error("Error:", err);
-              console.error("ffmpeg stderr:", stderr);
-              res.sendStatus(400);
-            })
-            .on("end", function (output) {
-              console.error("Video created in:", output);
-              cleanupVoice();
-              res.sendFile(output);
-            });
         });
-      } catch (err) {
-        cleanupVoice();
-        throw err;
       }
+
+      let images = [];
+      const logoPath = currentPath + "rsi-logo.jpg";
+
+      for (let i = 0; i < textData.length; i++) {
+        const element = textData[i];
+        if (element.type === "title") {
+          images.push({
+            path: currentPath + "image-0.jpg",
+            caption: element.content,
+            loop: Math.ceil(element.content.length / 15) + 1,
+          });
+        } else if (element.type === "content") {
+          images.push({
+            path: currentPath + "image-1.jpg",
+            caption: element.content,
+            loop: Math.ceil(element.content.length / 20) + 1,
+          });
+        }
+      }
+
+      // console.log(images);
+      const audioPath = currentPath + "audiotest.mp3";
+      const videoPath = currentPath + "video.mp4";
+     
+
+      // const loop = Math.ceil(duration / images.length);
+
+      const videoOptions = {
+        fps: 25,
+        transition: true,
+        transitionDuration: 1,
+        videoBitrate: 1024,
+        videoCodec: "libx264",
+        size: "960x540",
+        audioBitrate: "128k",
+        audioChannels: 2,
+        format: "mp4",
+        pixelFormat: "yuv420p",
+        subtitleStyle: {
+          Fontname: "Roboto",
+          Fontsize: "32",
+          PrimaryColour: "16777215",
+          SecondaryColour: "16777215",
+          TertiaryColour: "16777215",
+          BackColour: "-2147483640",
+          MarginV: '50',
+        },
+      };
+
+      videoshow(images, videoOptions)
+        .audio(audioPath)
+        .save(videoPath)
+        .on("start", function (command) {
+          console.log("ffmpeg process started:", command);
+        })
+        .on("error", function (err, stdout, stderr) {
+          console.error("Error:", err);
+          console.error("ffmpeg stderr:", stderr);
+          res.sendStatus(400);
+        })
+        .on("end", function (output) {
+          console.error("Video created in:", output);
+          res.sendFile(output);
+        });
     } catch (err) {
       console.log(err);
       res.sendStatus(400);
