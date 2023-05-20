@@ -1,16 +1,6 @@
-const productModel = require("../models/product.model");
-const respond = require("../services/respond.service");
 const videoshow = require("videoshow");
-const { getAudioDurationInSeconds } = require("get-audio-duration");
 const fs = require("fs");
-const tmp = require("tmp-promise");
-const { Configuration, OpenAIApi } = require("openai");
-const configuration = new Configuration({
-  organization: "org-MzjTrQ7icUfeYPNDjII1TUGv",
-  apiKey: process.env.OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(configuration);
-const download = require("image-downloader");
+const { v4: uuidv4 } = require('uuid');
 
 var currentPath = process.cwd() + "/files/";
 
@@ -39,7 +29,6 @@ class productController {
       }
 
       let images = [];
-      const logoPath = currentPath + "rsi-logo.jpg";
 
       for (let i = 0; i < textData.length; i++) {
         const element = textData[i];
@@ -60,8 +49,7 @@ class productController {
 
       // console.log(images);
       const audioPath = currentPath + "audiotest.mp3";
-      const videoPath = currentPath + "video.mp4";
-     
+      const videoPath = currentPath + uuidv4() + "video" + ".mp4";
 
       // const loop = Math.ceil(duration / images.length);
 
@@ -83,7 +71,7 @@ class productController {
           SecondaryColour: "16777215",
           TertiaryColour: "16777215",
           BackColour: "-2147483640",
-          MarginV: '50',
+          MarginV: "50",
         },
       };
 
@@ -99,8 +87,17 @@ class productController {
           res.sendStatus(400);
         })
         .on("end", function (output) {
-          console.error("Video created in:", output);
-          res.sendFile(output);
+          res.sendFile(output, (err) => {
+            if (err) {
+              console.log(err);
+              res.sendStatus(400);
+            } else {
+              fs.unlink(videoPath, (err) => {
+                if (err) throw err;
+                console.log("audio deleted");
+              });
+            }
+          });
         });
     } catch (err) {
       console.log(err);
