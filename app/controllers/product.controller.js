@@ -2,7 +2,7 @@ const videoshow = require("videoshow");
 const fs = require("fs");
 const { v4: uuidv4 } = require('uuid');
 
-var currentPath = process.cwd() + "/files/";
+var currentPath = process.cwd().replaceAll("\\", "/") + "/files/";
 
 const getMP3Duration = (buffer) => {
   return new Promise((resolve, reject) => {
@@ -17,6 +17,9 @@ class productController {
   async index(req, res, next) {
     try {
       if (!req.body.text && !req.body.textData) return res.sendStatus(400);
+      const template = req.body.template || "techeducation";
+      const listTemplate = ["tech-education", "marketing-ocean", "noteworthy", "art-gallery"];
+      if (!listTemplate.includes(template)) return res.status(400).send("Template not found");
       const text = String(req.body.text) || "";
       let textData = req.body.textData;
       if (!textData || !Array.isArray(textData)) {
@@ -26,7 +29,14 @@ class productController {
             type: index === 0 ? "title" : "content",
           };
         });
+      };
+
+      const colors = {
+        "tech-education": "16777215",
+        "marketing-ocean": "11861244",
       }
+
+      const color = colors[template] || "16777215";
 
       let images = [];
 
@@ -34,13 +44,13 @@ class productController {
         const element = textData[i];
         if (element.type === "title") {
           images.push({
-            path: currentPath + "image-0.jpg",
+            path: `${currentPath}${template}/title.jpg` ,
             caption: element.content,
             loop: Math.ceil(element.content.length / 15) + 1,
           });
         } else if (element.type === "content") {
           images.push({
-            path: currentPath + "image-1.jpg",
+            path: `${currentPath}${template}/content.jpg` ,
             caption: element.content,
             loop: Math.ceil(element.content.length / 20) + 1,
           });
@@ -48,7 +58,7 @@ class productController {
       }
 
       // console.log(images);
-      const audioPath = currentPath + "audiotest.mp3";
+      const audioPath = currentPath + template + "/" + "background-music.mp3";
       const videoPath = currentPath + uuidv4() + "video" + ".mp4";
 
       // const loop = Math.ceil(duration / images.length);
@@ -67,10 +77,7 @@ class productController {
         subtitleStyle: {
           Fontname: "Roboto",
           Fontsize: "32",
-          PrimaryColour: "16777215",
-          SecondaryColour: "16777215",
-          TertiaryColour: "16777215",
-          BackColour: "-2147483640",
+          PrimaryColour: color,
           MarginV: "50",
         },
       };
