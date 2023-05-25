@@ -187,7 +187,7 @@ class videoSlideController {
       const page = Number(req.query.page) || 1;
       if (!query || query.length > 50) return res.sendStatus(400);
       const response = await axios.get(
-        `https://api.unsplash.com/search/photos?page=${page}&query=${query}&client_id=${process.env.UNSPLASH_ACCESS_KEY}`
+        `https://api.unsplash.com/search/photos?page=${page}&query=${query}&client_id=MDgdBm82jAfIf97lET2piQ_fFIUaT8r_k9AEbqeCIFU`
       );
       const data = response.data;
       res.status(200).send({ ...data, query: query });
