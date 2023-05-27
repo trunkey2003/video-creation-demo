@@ -24,15 +24,16 @@ class videoSlideController {
         return res.status(400).send("Template not found");
       if (
         template === "custom" &&
-        (!req.files || !Array.isArray(req.files) || req.files.length === 0)
+        (!req.files || !Array.isArray(req.files.images) || req.files.images.length === 0 || !req.files.bgMusic)
       )
         return res.status(400).send("Custom template need images");
-      const files = [...req.files] || [];
-      for (let i = 0; i < files.length; i++) {
-        const buffer = await sharp(files[i].path)
+      const imagesFile = [...req.files.images];
+      const bgMusic = req.files.bgMusic;
+      for (let i = 0; i < imagesFile.length; i++) {
+        const buffer = await sharp(imagesFile[i].path)
           .resize(960, 540)
-          .toBuffer(files[i].path);
-        await fs.writeFile(files[i].path, buffer);
+          .toBuffer(imagesFile[i].path);
+        await fs.writeFile(imagesFile[i].path, buffer);
       };
       const text = String(req.body.text) || "";
       let textData = null;
@@ -81,7 +82,7 @@ class videoSlideController {
         }
       } else {
         //make the images array length equal to textData length
-        const allImagesPath = files.map((file) => file.path);
+        const allImagesPath = imagesFile.map((file) => file.path);
         const imageTemp = [];
         console.log(allImagesPath);
         // if images user upload is less than textData length, then loop the images until it's equal to textData length
@@ -111,7 +112,12 @@ class videoSlideController {
       }
 
       // console.log(images);
-      const audioPath = currentPath + template + "/" + "background-music.mp3";
+      let audioPath = "";
+      if (template === "custom") {
+        audioPath = bgMusic[0].path;
+      } else {
+        audioPath = currentPath + template + "/" + "background-music.mp3";
+      }
 
       // const loop = Math.ceil(duration / images.length);
 
@@ -153,16 +159,19 @@ class videoSlideController {
               res.sendStatus(400);
             } else {
               let cleanupPromises = [unlink(videoPath)];
-              if (req.files && Array.isArray(req.files)) {
-                cleanupPromises = [
-                  ...cleanupPromises,
-                  ...req.files.map((file) => unlink(file.path)),
-                ];
-              }
+              const files = Object.keys(req.files).reduce((result, key) => {
+                const items = req.files[key].map(item => ({ ...item }));
+                result.push(...items);
+                return result;
+              }, []);
+              cleanupPromises = [
+                ...cleanupPromises,
+                files.map((file) => unlink(file.path)),
+              ];
               Promise.all(cleanupPromises)
                 .then(() => {
                   console.log("cleanup success");
-                  req.files = [];
+                  req.files = {};
                 })
                 .catch((err) => {
                   console.log(err);
@@ -172,11 +181,15 @@ class videoSlideController {
         });
     } catch (err) {
       console.log(err);
-      if (req.files && Array.isArray(req.files)) {
-        req.files.forEach(async (file) => {
-          unlink(file.path);
-        });
-      }
+      const files = Object.keys(req.files).reduce((result, key) => {
+        const items = req.files[key].map(item => ({ ...item }));
+        result.push(...items);
+        return result;
+      }, []);
+      cleanupPromises = [
+        ...cleanupPromises,
+        files.map((file) => unlink(file.path)),
+      ];
       res.sendStatus(500);
     }
   }
@@ -185,7 +198,7 @@ class videoSlideController {
     try {
       const query = req.query.q;
       const page = Number(req.query.page) || 1;
-      if (!query || query.length > 50) return res.sendStatus(400);
+      if (!query || query.length > 50)   return res.sendStatus(400);
       const response = await axios.get(
         `https://api.unsplash.com/search/photos?page=${page}&query=${query}&client_id=MDgdBm82jAfIf97lET2piQ_fFIUaT8r_k9AEbqeCIFU`
       );
@@ -193,7 +206,7 @@ class videoSlideController {
       res.status(200).send({ ...data, query: query });
     } catch (err) {
       console.log(err);
-      res.sendStatus(500);
+      res.sendStatus(500).send(JSON.stringify(err));
     }
   }
 }

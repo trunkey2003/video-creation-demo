@@ -10,34 +10,62 @@ const storage = multer.diskStorage({
     cb(null, process.cwd().replaceAll("\\", "/") + "/files/custom");
   },
   filename: function (req, file, cb) {
-    cb(
-      null,
-      file.fieldname + "-" + uuidv4() + file.originalname.match(/\..*$/)[0]
-    );
+    console.log(file);
+    let fileName = "";
+
+    fileName =
+      file.fieldname +
+      "-" +
+      uuidv4() +
+      "." +
+      file.mimetype.split("/")[1];
+
+    cb(null, fileName);
   },
 });
 
-const multi_upload = multer({
-  storage,
-  limits: { fileSize: 1 * 1024 * 1024 }, // 1MB
-  fileFilter: (req, file, cb) => {
+const fileFilter = (req, file, cb) => {
+  if (file.fieldname === "bgMusic") {
     if (
-      file.mimetype == "image/png" ||
-      file.mimetype == "image/jpg" ||
-      file.mimetype == "image/jpeg"
+      file.mimetype === "audio/mpeg" ||
+      file.mimetype === "audio/wav" ||
+      file.mimetype === "audio/mp3" ||
+      file.mimetype === "audio/ogg"
     ) {
-      cb(null, true);
+      cb(null, true); // Accept the file
     } else {
-      cb(null, false);
-      const err = new Error("Only .png, .jpg and .jpeg format allowed!");
-      err.name = "ExtensionError";
-      return cb(err);
+      cb(new Error("Music file should be mp3 or wav."), false); // Reject the file
     }
-  },
-}).array("images", 10);
+  } else {
+    if (
+      file.mimetype === "image/jpeg" ||
+      file.mimetype === "image/png" ||
+      file.mimetype === "image/webp" || 
+      file.mimetype === "image/jpg"
+    ) {
+      cb(null, true); // Accept the file
+    } else {
+      cb(new Error("Image file should be jpeg, png or webp."), false); // Reject the file
+    }
+  }
+};
 
-// upload multiple files
-router.post("/videoslide/create", multi_upload, videoSlideController.create);
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+});
+
+const handleUploadImageAndBgMusic = upload.fields([
+  { name: "bgMusic", maxCount: 1 },
+  { name: "images", maxCount: 10 },
+]);
+
+// upload multiple files 10 image and 1 bgMusic
+router.post(
+  "/videoslide/create",
+  handleUploadImageAndBgMusic,
+  videoSlideController.create
+);
 router.get("/videoslide/queryImages", videoSlideController.queryImages);
 
 router.get("/hello-world", (req, res) => res.send("Hello World!"));
