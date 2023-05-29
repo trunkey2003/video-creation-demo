@@ -27,8 +27,12 @@ class videoSlideController {
         (!req.files || !Array.isArray(req.files.images) || req.files.images.length === 0 || !req.files.bgMusic)
       )
         return res.status(400).send("Custom template need images");
-      const imagesFile = [...req.files.images];
-      const bgMusic = req.files.bgMusic;
+      let imagesFile = [];
+      let bgMusic = [];
+      if (template === "custom") {
+        imagesFile = req.files.images;
+        bgMusic = req.files.bgMusic;
+      };
       for (let i = 0; i < imagesFile.length; i++) {
         const buffer = await sharp(imagesFile[i].path)
           .resize(960, 540)
@@ -181,15 +185,14 @@ class videoSlideController {
         });
     } catch (err) {
       console.log(err);
-      const files = Object.keys(req.files).reduce((result, key) => {
-        const items = req.files[key].map(item => ({ ...item }));
-        result.push(...items);
-        return result;
-      }, []);
-      cleanupPromises = [
-        ...cleanupPromises,
-        files.map((file) => unlink(file.path)),
-      ];
+      if (req.files) {
+        const files = Object.keys(req.files).reduce((result, key) => {
+          const items = req.files[key].map(item => ({ ...item }));
+          result.push(...items);
+          return result;
+        }, []);
+        files.map((file) => unlink(file.path));
+      };
       res.sendStatus(500);
     }
   }
