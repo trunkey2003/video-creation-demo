@@ -11,7 +11,7 @@ class videoSlideController {
   async create(req, res, next) {
     let videoPath = "";
     try {
-      if (!req.body.text && !req.body.textData) return res.sendStatus(400);
+      if (!req.body.dataScript) return res.sendStatus(400);
       const template = req.body.template || "techeducation";
       const listTemplate = [
         "tech-education",
@@ -39,23 +39,7 @@ class videoSlideController {
           .toBuffer(imagesFile[i].path);
         await fs.writeFile(imagesFile[i].path, buffer);
       };
-      const text = String(req.body.text) || "";
-      let textData = null;
-      try {
-        textData = req.body.textData ? JSON.parse(req.body.textData) : null;
-      } catch (err) {
-        textData = null;
-        console.log(err);
-        console.log(req.body.textData);
-      }
-      if (!textData || !Array.isArray(textData)) {
-        textData = text.split(".").map((element, index) => {
-          return {
-            content: element,
-            type: index === 0 ? "title" : "content",
-          };
-        });
-      }
+      let textData = JSON.parse(req.body.dataScript);
 
       const colors = {
         "tech-education": "16777215",
